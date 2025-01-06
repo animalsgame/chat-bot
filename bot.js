@@ -322,7 +322,6 @@ sendBinaryData(this,{name:name,userid:userid},data,cb);
 
 run(cb){
 var th=this;
-th.reconnect=true;
 if(th.client)return;
 var sock=new Socket();
 sock.on('error', (e)=>{});

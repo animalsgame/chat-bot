@@ -265,13 +265,13 @@ if(seconds>0)arr.push(seconds+' сек.');
 var msgsArr=['Я тоже хочу!', 'Хотеть не вредно.'];
 var msg=msgsArr.random(); // берём случайный текст из массива
 msg+=' Нужно ещё подождать ';
-msg+=arr2.join(' ');
+msg+=arr.join(' ');
 return {msg:msg, color:['#FFFFFF']};
 }
-}
-
+}else{
 // если бот не в друзьях у получателя
 return {msg:'Я не могу дать подарок, добавь меня в друзья!', color:['#f1a0b3', '#FFFF00']};
+}
 });
 
 // Обработка событий
