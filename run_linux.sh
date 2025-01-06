@@ -1,2 +1,2 @@
-#!/bin/bash
-./node app.js token
+#!/usr/bin/env node
+node app.js token
