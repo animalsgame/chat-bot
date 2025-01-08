@@ -331,3 +331,14 @@ fs.appendFileSync('messages.txt', 'id '+user.id+' ('+user.nick+') -> '+text+'\r\
 }
 });
 */
+
+// ещё один пример, только не запись в файл, а перенаправление сообщений - владельцу, уберите /* */ ниже
+
+/*
+bot.event('message',(user,text)=>{
+var ownerid=bot.botInfo.owner; // id владельца бота
+if(user.id!=ownerid){ // чтобы сообщения владельца игнорировать, а то бот будет писать владельцу то что пишет владелец...
+bot.sendMessage(bot.botInfo.owner, 'id '+user.id+' ('+user.nick+') -> '+text, {color:['#FFFFFF']});
+}
+});
+*/
