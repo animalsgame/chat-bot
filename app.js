@@ -185,6 +185,37 @@ var result=a+b;
 return 'ответ: '+result;
 });
 
+// отправка сообщения определённому игроку, пример команды "напиши 1 Привет" будет отправлено сообщение "Привет" игроку с id 1
+bot.cmd('напиши',(user,words)=>{
+if(checkAdmin(user)){ // команда только для владельца
+var friendID=parseInt(words.shift()) || 0; // id получателя
+var msg=words.join(' ');
+if(msg && friendID!=bot.botInfo.owner){ // проверяем id получателя с id владельца бота, чтобы самому себе нельзя было отправить сообщение
+// обращаемся к api чтобы получить список друзей бота
+bot.api('bot.friends',{},(friendsData)=>{
+if(friendsData.error){
+if(friendsData.error.msg)bot.sendMessage(user.id,friendsData.error.msg,{});
+}else if(Array.isArray(friendsData)){
+if(friendsData.indexOf(friendID)>-1){ // ищем id получателя
+
+// нашли, отправляем получателю сообщение
+bot.sendMessage(friendID,msg,{color:['#f1a0b3', '#FFFF00']},(res)=>{
+// проверяем статус доставки сообщения
+if(res.error && res.error.msg){ // если произошла ошибка
+bot.sendMessage(user.id,res.error.msg,{}); 
+}else if(res.ok){ // сообщение доставлено
+bot.sendMessage(user.id,'Сообщение для ID '+friendID+' доставлено!');
+}
+});
+}else{
+bot.sendMessage(user.id,'Игрок ID '+friendID+' не в друзьях у меня.');
+}
+}
+});
+}
+}
+});
+
 bot.cmd('магия',(user,words)=>{
 if(words.length==0){
 var polStr='женский';
