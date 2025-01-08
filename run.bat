@@ -1,3 +1,3 @@
 @echo off
 node app.js token
-::pause
+if %ERRORLEVEL% NEQ 0 pause
