@@ -184,30 +184,32 @@ var result=a+b;
 return 'ответ: '+result;
 });
 
-// отправка сообщения определённому игроку, пример команды "напиши 1 Привет" будет отправлено сообщение "Привет" игроку с id 1
+// отправка сообщения игрокам, список получателей через запятую разделяется. Пример команды "напиши 1,10 Привет" будет отправлено сообщение "Привет" игроку с id 1 и id 10
 bot.cmd('напиши',(user,words)=>{
 if(checkAdmin(user)){ // команда только для владельца
-var friendID=parseInt(words.shift()) || 0; // id получателя
+var idsStr=words.shift(); // получаем список id
+var friendsIds=idsStr.split(',').map(Number).filter(id=>!isNaN(id));
 var msg=words.join(' ');
-if(msg && friendID!=bot.botInfo.owner){ // проверяем id получателя с id владельца бота, чтобы самому себе нельзя было отправить сообщение
+if(msg && friendsIds.length>0){
 // обращаемся к api чтобы получить список друзей бота
 bot.api('bot.friends',{},(friendsData)=>{
 if(friendsData.error){
 if(friendsData.error.msg)bot.sendMessage(user.id,friendsData.error.msg,{});
 }else if(Array.isArray(friendsData)){
-if(friendsData.indexOf(friendID)>-1){ // ищем id получателя
-
-// нашли, отправляем получателю сообщение
-bot.sendMessage(friendID,msg,{color:['#f1a0b3', '#FFFF00']},(res)=>{
+friendsIds=friendsIds.filter(id=>friendsData.includes(id) || id==bot.botInfo.owner); // возвращаем новый массив, и убираем из списка тех кого не нашли в друзьях
+if(friendsIds.length>0){
+// отправляем сообщение
+bot.sendMessage(friendsIds,msg,{color:['#f1a0b3', '#FFFF00']},(res)=>{
 // проверяем статус доставки сообщения
 if(res.error && res.error.msg){ // если произошла ошибка
 bot.sendMessage(user.id,res.error.msg,{}); 
-}else if(res.ok){ // сообщение доставлено
-bot.sendMessage(user.id,'Сообщение для ID '+friendID+' доставлено!');
+}else if(res.status && Array.isArray(res.status)){ // есть статус, значит можно проверять доставлено сообщение или нет
+friendsIds=friendsIds.map((item,index)=>(res.status[index]==1) ? item : undefined);
+bot.sendMessage(user.id,'Сообщение для ID ['+friendsIds.join(',')+'] доставлено!');
 }
 });
 }else{
-bot.sendMessage(user.id,'Игрок ID '+friendID+' не в друзьях у меня.');
+bot.sendMessage(user.id,'Нет таких игроков в друзьях у меня.');
 }
 }
 });
