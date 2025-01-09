@@ -187,6 +187,7 @@ return 'ответ: '+result;
 // отправка сообщения игрокам, список получателей через запятую разделяется. Пример команды "напиши 1,10 Привет" будет отправлено сообщение "Привет" игроку с id 1 и id 10
 bot.cmd('напиши',(user,words)=>{
 if(checkAdmin(user)){ // команда только для владельца
+if(words.length==0)return;
 var idsStr=words.shift(); // получаем список id
 var friendsIds=idsStr.split(',').map(Number).filter(id=>!isNaN(id));
 var msg=words.join(' ');
