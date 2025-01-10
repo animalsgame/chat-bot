@@ -40,10 +40,13 @@ if(adminIds.indexOf(user.id)>-1)return true;
 return false;
 }
 
+// теперь с поддержкой пробелов в команде
 function cmdWord(name,value,props){
 if(!props)props={};
 if(name && value){
+var len=name.split(' ').length-1;
 bot.cmd(name,(user,words)=>{
+if(len>0)words.splice(0,len);
 if(words.length==0)return {...props,msg:value,type:'message'};
 });
 }
@@ -64,6 +67,7 @@ addAdminCmd('друзья','bot.friends');
 
 var mainProps={color:['#FFFFFF']}; // FFFFFF в hex формате это белый цвет (255 255 255) 
 
+cmdWord('как дела', 'Хорошо*em3*', mainProps);
 cmdWord('пинг', 'ПОНГ', mainProps);
 cmdWord('кинг', 'КОНГ', mainProps);
 cmdWord('кошка', 'МЫШКА', {color:['#f1a0b3', '#FFFF00']}); // пусть текст МЫШКА будет цветным
