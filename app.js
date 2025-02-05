@@ -1,4 +1,6 @@
-﻿// функция нужна чтобы легко можно было выбирать случайный элемент из массива
+﻿module.exports = function(bot){
+
+// функция нужна чтобы легко можно было выбирать случайный элемент из массива
 Array.prototype.random=function(){
 return this[Math.floor(Math.random() * this.length)];
 };
@@ -15,7 +17,7 @@ return Math.floor(Date.now() / 1000);
 
 const fs=require('fs'); // для работы с файловой системой
 const {Bot, log} = require('./bot'); // сам бот
-var bot=new Bot();
+
 var adminCmds={};
 
 // функция для проверки что бот запущен в белках, пригодится чтобы например указывать разные id подарков для каждого проекта
@@ -366,3 +368,5 @@ bot.sendMessage(ownerid, 'id '+user.id+' ('+user.nick+') -> '+text, {color:['#FF
 }
 });
 */
+
+};
