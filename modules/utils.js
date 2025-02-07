@@ -36,6 +36,7 @@ function downloadFile(url, cb){
 var chunks = [];
 var isErrors = false;
 var isClose = false;
+var ret = null;
 var result = {status:0, data:null};
 var client = https.get(url, res=>{
 result.status = res.statusCode;
@@ -60,7 +61,14 @@ result.data = Buffer.concat(chunks);
 if(cb)cb(result);
 });
 
+if(typeof cb!='function'){
+ret = new Promise(resolve=>{
+cb = resolve;
+});
+}
+
 client.end();
+return ret;
 }
 
 module.exports = {checkDrug, checkAdmin, getTimeStr, downloadFile};
