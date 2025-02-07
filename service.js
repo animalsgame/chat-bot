@@ -1,7 +1,7 @@
 const fs = require('fs');
 const {Bot, log} = require('./bot');
 const bots = [];
-const isTestLocal = (process.argv.length > 2 && process.argv[2]=='testlocal') ? true : false;
+const isTestLocal = (process.argv.length > 2 && process.argv[2] == 'testlocal') ? true : false;
 const fileToken = (isTestLocal) ? 'token_testlocal.txt' : 'token.txt';
 
 var mainFile = 'app.js'; // главный файл
@@ -17,6 +17,11 @@ if(fs.existsSync(fileToken)){
 var cnt = fs.readFileSync(fileToken).toString();
 if(cnt)tokensList = cnt.replace(/\r/g,'').split('\n').map(v=>v.trim()).filter(v=>!!v);
 if(tokensList.length > 5)tokensList = tokensList.slice(0, 5);
+}
+
+if(tokensList.length == 0){
+console.log('Токен не найден, откройте файл '+fileToken+' и укажите токен.');
+process.exit(1);	
 }
 
 tokensList.map(v=>run(v));
