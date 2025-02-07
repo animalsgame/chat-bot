@@ -1,7 +1,7 @@
 const {Socket} = require('net');
 const NetCmd = {FRIEND:1, MSG:2, MSG_BINARY:3};
 const numBytes = 4+4+1+1+4;
-const LogColorsObj = {pink:'\x1b[1;35m', green:'\x1b[1;32m', 'yellow':'\x1b[1;33m'};
+const LogColorsObj = {pink:'\x1b[1;35m', green:'\x1b[1;32m', yellow:'\x1b[1;33m'};
 var botInstanceID = 1;
 
 function getCurrentTime(){
@@ -160,9 +160,7 @@ if(obj.event=='error'){
 var err=(obj.data) ? editJsonStr(JSON.stringify(obj.data)) : null;
 var eventType=(obj.data) ? obj.data.type : null;
 if(typeof eventType=='string' && eventType in socket.eventsObj)socket.eventsObj[eventType](obj.data);
-if(socket.isLog){
-logColor('pink','[packet '+packid+']','[error] ->',err);
-}
+if(socket.isLog)logColor('pink','[botid '+socket.getBotID()+']','[packet '+packid+']','[error] ->',err);
 resObj={error:obj.data};
 }else if(obj.cmd=='auth' && obj.data){
 resObj=null;
