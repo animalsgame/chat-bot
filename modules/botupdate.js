@@ -67,4 +67,4 @@ bot.sendMessage(uid, errText);
 }
 }
 
-module.exports = {handler};
+module.exports = handler;
