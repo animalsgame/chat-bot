@@ -1,20 +1,30 @@
 const {Socket} = require('net');
-const NetCmd={FRIEND:1,MSG:2,MSG_BINARY:3};
-const numBytes=4+4+1+1+4;
+const NetCmd = {FRIEND:1, MSG:2, MSG_BINARY:3};
+const numBytes = 4+4+1+1+4;
+const LogColorsObj = {pink:'\x1b[1;35m', green:'\x1b[1;32m', 'yellow':'\x1b[1;33m'};
+var botInstanceID = 1;
 
 function getCurrentTime(){
-var date=new Date();
-var strhour=date.getHours();
-var strmin=date.getMinutes();
-var strsec=date.getSeconds();
-if(date.getHours()<10)strhour='0'+date.getHours();
-if(date.getMinutes()<10)strmin='0'+date.getMinutes();
-if(date.getSeconds()<10)strsec='0'+date.getSeconds();
-return [strhour,strmin,strsec].join(':');
+var date = new Date();
+return [date.getHours(), date.getMinutes(), date.getSeconds()].map(v=>{return v<10 ? '0'+v : v}).join(':');
 }
 
 function log(){
 console.log(...[getCurrentTime(), ...arguments]);
+}
+
+function logColor(colorType, ...args){
+if(colorType && colorType in LogColorsObj){
+console.log(LogColorsObj[colorType], getCurrentTime(), ...args, '\x1b[0m');
+}else log(...args);
+}
+
+function editJsonStr(s){
+if(s){
+// заменяем символы чтобы они не обрабатывались в терминале, некоторые символы относятся к управляющим, и если особый символ попадает в терминал - можно вызвать звуковой сигнал...
+s=s.replace(/[\u0800-\uFFFF]/g, (chr)=>'\\u'+('0000'+chr.charCodeAt(0).toString(16)).substr(-4));
+}
+return s;
 }
 
 function emptyCB(error){}
@@ -65,7 +75,7 @@ client.callbacks[packid]=obj;
 }
 
 sendPacket(client,packid,NetCmd.MSG,buf);
-if(client.isLog)log('[packet '+packid+']','[send] ->',str);
+if(client.isLog)log('[botid '+client.getBotID()+']','[packet '+packid+']','[send] ->',editJsonStr(str));
 }
 }
 }
@@ -87,12 +97,12 @@ if(typeof cb=='function')obj.cb=cb;
 client.callbacks[packid]=obj;
 
 sendPacket(client,packid,NetCmd.MSG_BINARY,buf);
-if(client.isLog)log('[packet binary '+packid+']','[send] ->',str,data,'['+data.length+' bytes]');
+if(client.isLog)log('[botid '+client.getBotID()+']','[packet binary '+packid+']','[send] ->',editJsonStr(str),data,'['+data.length+' bytes]');
 }
 }
 
 
-function readBuffer(socket, data, cb){
+async function readBuffer(socket, data, cb){
 var checkFlag=false;
 var chunkInfo=socket.chunkInfo;
 chunkInfo.buffer=Buffer.concat([chunkInfo.buffer, data]);
@@ -110,8 +120,8 @@ if(chunkInfo.messageSize>0 && chunkInfo.buffer.length>=chunkInfo.messageSize+num
 var buffer=chunkInfo.buffer.subarray(numBytes,chunkInfo.messageSize+numBytes);
 if(cmdType==NetCmd.FRIEND){
 if(buffer && buffer.length>0)socket.signBuffer=buffer;
-log('сервер ->','давай!');
-log('клиент ->','передаю токен.');
+log('[uniqid '+socket.uniqid+']','сервер ->','давай!');
+log('[uniqid '+socket.uniqid+']','клиент ->','передаю токен.');
 
 socket.isLog=false;
 sendData(socket,0,{cmd:'auth',token:socket.token});
@@ -147,10 +157,12 @@ nm=obj.event;
 if(obj.event=='data' && resObj.data)resObj=resObj.data;
 
 if(obj.event=='error'){
-var err=(obj.data) ? JSON.stringify(obj.data) : null;
+var err=(obj.data) ? editJsonStr(JSON.stringify(obj.data)) : null;
 var eventType=(obj.data) ? obj.data.type : null;
 if(typeof eventType=='string' && eventType in socket.eventsObj)socket.eventsObj[eventType](obj.data);
-log('[packet '+packid+']','[error] ->',err);
+if(socket.isLog){
+logColor('pink','[packet '+packid+']','[error] ->',err);
+}
 resObj={error:obj.data};
 }else if(obj.cmd=='auth' && obj.data){
 resObj=null;
@@ -159,7 +171,12 @@ if(cb)cb(socket.botInfo);
 //resObj=obj.data;
 }else{
 if(isEvent)obj=obj.data;
-if(socket.isLog)log('[packet '+packid+']','['+nm+'] ->',JSON.stringify(obj));
+if(socket.isLog){
+var clr='';
+if(nm=='error')clr='pink';
+
+logColor(clr, '[botid '+socket.getBotID()+']','[packet '+packid+']','['+nm+'] ->',editJsonStr(JSON.stringify(obj)));
+}
 }
 
 if(packid in socket.callbacks){
@@ -174,12 +191,21 @@ var cbObj2=null;
 var msg=obj.msg;
 var msgOrig=msg;
 var userObj=obj.user;
+var stopCmd=false;
 var spl=null;
 if(msg && userObj){
 spl=msg.split(' ');
 var cmdName=spl.shift();
 
-if('message' in socket.eventsObj)socket.eventsObj.message(userObj,msg);
+if('message' in socket.eventsObj){
+var res2=socket.eventsObj.message(userObj,msg);
+if(typeof res2=='boolean' && !res2){
+// если обработчик возвращает false, останавливаем остальные обработчики команд. Это для особых случаев, например если нужно сделать чс в боте, тогда дублировать код для чс в каждую команду не нужно
+stopCmd=true;
+}
+}
+
+if(!stopCmd){
 
 if(msg in socket.cmdsObj)cbObj2=socket.cmdsObj[msg];
 
@@ -203,10 +229,13 @@ cbObj2=socket.cmdsObj[''];
 }
 }
 
+}
+
 if(cbObj2){
 if(!spl)spl=[];
 var res=cbObj2.cb(userObj,spl);
 if(res){
+if(typeof res=='object' && res instanceof Promise)res=await res;
 var propsV=null;
 var typeV=null;
 if(typeof res=='object'){
@@ -250,7 +279,7 @@ if(pos2<buffer.length)binData=buffer.subarray(pos2);
 }
 
 if(binData && objData && objData.user){
-if(socket.isLog)log('[packet binary '+packid+']','[data] ->',JSON.stringify(objData),binData,'['+binData.length+' bytes]');
+if(socket.isLog)log('[botid '+socket.getBotID()+']','[packet binary '+packid+']','[data] ->',editJsonStr(JSON.stringify(objData)),binData,'['+binData.length+' bytes]');
 if('file' in socket.eventsObj)socket.eventsObj.file(objData,binData);
 }
 
@@ -261,24 +290,19 @@ if('file' in socket.eventsObj)socket.eventsObj.file(objData,binData);
 }
 
 
-class Client{
+class Bot{
 
 constructor(token){
 if(typeof token=='undefined' && process.argv.length>2)token=process.argv[2];
-this.client=null;
-this.botInfo=null;
-this.isLog=true;
-this.isConnected=false;
-this.token=token;
-this.connectHost='ag6.ru';
-this.connectPort=8000;
-this.reconnect=false;
+this.uniqid = botInstanceID++;
 this.chunkInfo={messageSize:0, cmdType:0, packetID:0, buffer:Buffer.alloc(0)};
-this.callbacks={};
-this.eventsObj={};
-this.cmdsObj={};
+Object.assign(this, {client:null, botInfo:null, isLog:true, isConnected:false, token:token, connectHost:'ag6.ru', connectPort:8000, reconnect:false, callbacks:{}, eventsObj:{}, cmdsObj:{}});
 if(process.argv.length>3 && process.argv[3]=='local')this.connectHost='127.0.0.1';
 this.log=log;
+}
+
+getBotID(){
+return (this.botInfo) ? this.botInfo.id : 0;
 }
 
 event(type, cb){
@@ -286,37 +310,46 @@ if(type && typeof cb=='function')this.eventsObj[type]=cb;
 }
 
 cmd(name, cb){
-if(typeof cb=='function'){
-this.cmdsObj[name]={cb:cb};
+this.on(name, cb);
+}
+
+on(name, cb){
+if(typeof cb=='function')this.cmdsObj[name]={cb:cb};
+}
+
+off(name, cb){
+if(name && cb){
+var v=this.cmdsObj[name];
+if(v && v.cb==cb)delete this.cmdsObj[name];
 }
 }
 
 api(method, props, cb){
 if(this.client){
 if(!props)props={};
-sendData(this,0,{...props,method:method,cmd:'api'},cb);
+var obj={...props,method:method,cmd:'api'};
+if(typeof cb == 'function')sendData(this,0,obj,cb);
+else return new Promise(resolve=>sendData(this,0,obj,resolve));
 }
 }
 
 sendGift(userid, itemid, cb){
-this.api('bot.sendGift',{userid:userid,itemid:itemid},cb);
+return this.api('bot.sendGift',{userid:userid,itemid:itemid},cb);
 }
 
 sendMessage(userid, msg, props, cb){
 if(!props)props={};
-sendData(this,0,{...props,cmd:'message',userid:userid,msg:msg},cb);
+var obj={...props,cmd:'message',userid:userid,msg:msg};
+if(typeof cb == 'function')sendData(this,0,obj,cb);
+else return new Promise(resolve=>sendData(this,0,obj,resolve));
 }
 
 sendFile(userid, info, data, cb){
 if(!info)info={};
+var obj={...info,userid:userid};
 if(data && data instanceof Buffer){
-sendBinaryData(this,{...info,userid:userid},data,cb);
-}
-}
-
-sendFileName(userid, name, data, cb){
-if(data && data instanceof Buffer){
-sendBinaryData(this,{name:name,userid:userid},data,cb);
+if(typeof cb == 'function')sendBinaryData(this,obj,data,cb);
+else return new Promise(resolve=>sendBinaryData(this,obj,data,resolve));
 }
 }
 
@@ -328,7 +361,11 @@ sock.on('error', (e)=>{});
 sock.on('close', ()=>{
 var txt='ошибка подключения';
 if(th.isConnected)txt='соединение закрыто';
-log(txt);
+if(th.isConnected){
+logColor('yellow','[botid '+th.getBotID()+']', txt);
+}else{
+log('[botid '+th.getBotID()+']', txt);
+}
 th.isConnected=false;
 if(th.reconnect){
 setTimeout(()=>{
@@ -337,18 +374,23 @@ th.run(cb);
 }, 5000);
 }
 });
-sock.on('data', (data)=>{readBuffer(th,data,cb)});
+sock.on('data', data=>readBuffer(th,data,cb));
 
-log('клиент ->','подключение к серверу...');
+log('[uniqid '+th.uniqid+']','клиент ->','подключение к серверу...');
 
 sock.connect(th.connectPort,th.connectHost,()=>{
 th.isConnected=true;
-log('клиент ->','сервер, давай дружить?');
+log('[uniqid '+th.uniqid+']','клиент ->','сервер, давай дружить?');
 sendPacket(th,0,NetCmd.FRIEND);
 });
 th.client=sock;
 }
 
+reset(){
+this.cmdsObj={};
+this.eventsObj={};
 }
 
-module.exports={Bot:Client, log:log};
+}
+
+module.exports={Bot, log, logColor};
