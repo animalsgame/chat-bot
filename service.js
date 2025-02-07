@@ -1,14 +1,25 @@
 const fs = require('fs');
 const {Bot, log} = require('./bot');
 const bots = [];
-const mainFile = 'app.js'; // главный файл
-const autoReconnect = false; // переподключение после потери соединения, если нужно включить измените false на true
+const isTestLocal = (process.argv.length > 2 && process.argv[2]=='testlocal') ? true : false;
+const fileToken = (isTestLocal) ? 'token_testlocal.txt' : 'token.txt';
 
-// здесь запускаются боты через функцию run, вместо слова token укажите ваш токен
+var mainFile = 'app.js'; // главный файл
+var autoReconnect = false; // переподключение после потери соединения, если нужно включить измените false на true
+var tokensList = [];
 
-run('token');
+if(process.argv.length > 3){
+var path = process.argv[3]+'.js';
+if(fs.existsSync(path))mainFile = path;
+}
 
-// код ниже трогать не надо
+if(fs.existsSync(fileToken)){
+var cnt = fs.readFileSync(fileToken).toString();
+if(cnt)tokensList = cnt.replace(/\r/g,'').split('\n').map(v=>v.trim()).filter(v=>!!v);
+if(tokensList.length > 5)tokensList = tokensList.slice(0, 5);
+}
+
+tokensList.map(v=>run(v));
 
 function reloadBot(bot){
 var path = require.resolve('./'+mainFile);
@@ -43,6 +54,7 @@ log('\x1b[1;33m', 'бот с токеном '+token+' уже был добавл
 }else{
 var bot = new Bot(token);
 if(autoReconnect)bot.reconnect = true;
+if(isTestLocal)bot.connectHost = '127.0.0.1';
 var cbClose = function(){
 this.removeListener('close', cbClose);
 var activeBots = bots.filter(info => info.bot.isConnected);
