@@ -8,6 +8,19 @@ var mainFile = 'app.js'; // главный файл
 var autoReconnect = false; // переподключение после потери соединения, если нужно включить измените false на true
 var tokensList = [];
 
+if(process.argv.length > 2){
+var s1 = process.argv[2];
+if(s1 && s1.indexOf('token=') == 0){
+var tokenVal = s1.substr(6);
+if(tokenVal){
+try{
+fs.writeFileSync(fileToken, tokenVal);
+}catch(e){
+}
+}
+}
+}
+
 if(process.argv.length > 3){
 var path = process.argv[3]+'.js';
 if(fs.existsSync(path))mainFile = path;
