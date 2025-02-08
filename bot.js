@@ -193,7 +193,7 @@ var stopCmd=false;
 var spl=null;
 if(msg && userObj){
 spl=msg.split(' ');
-var cmdName=spl.shift();
+var cmdName=spl.shift().toLowerCase();
 
 if('message' in socket.eventsObj){
 var res2=socket.eventsObj.message(userObj,msg);
@@ -204,29 +204,8 @@ stopCmd=true;
 }
 
 if(!stopCmd){
-
-if(msg in socket.cmdsObj)cbObj2=socket.cmdsObj[msg];
-
-if(!cbObj2){
-var msgLower=msg.toLowerCase();
-if(msgLower in socket.cmdsObj)cbObj2=socket.cmdsObj[msgLower];
-}
-
-if(!cbObj2){
-if(cmdName){
-cmdName=cmdName.toLowerCase();
-msg=spl.join(' ');
-if(cmdName in socket.cmdsObj)cbObj2=socket.cmdsObj[cmdName];
-}
-}
-
-if(!cbObj2){
-if('' in socket.cmdsObj){
-spl=msgOrig.split(' ');
-cbObj2=socket.cmdsObj[''];
-}
-}
-
+cbObj2=socket.cmdsObj[msg.toLowerCase()];
+if(!cbObj2)cbObj2=socket.cmdsObj[cmdName];
 }
 
 if(cbObj2){
@@ -312,11 +291,12 @@ this.on(name, cb);
 }
 
 on(name, cb){
-if(typeof cb=='function')this.cmdsObj[name]={cb:cb};
+if(name && typeof cb=='function')this.cmdsObj[name.toLowerCase()]={cb:cb};
 }
 
 off(name, cb){
 if(name && cb){
+name=name.toLowerCase();
 var v=this.cmdsObj[name];
 if(v && v.cb==cb)delete this.cmdsObj[name];
 }
