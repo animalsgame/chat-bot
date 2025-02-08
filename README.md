@@ -7,6 +7,10 @@ https://vk.com/app6787147 | https://ag6.ru/games/play/73952
 #### Охотники против грызунов
 https://vk.com/app7542283 | https://ag6.ru/games/play/53210
 
+# Появился установщик для быстрого запуска чат-бота!
+Всё будет сделано автоматически, вам понадобится только токен бота.  
+Проект находится по ссылке https://github.com/animalsgame/chat-bot-installer
+
 # Установка
 ### 1: Скачайте архив с проектом, можно по прямой ссылке
 https://github.com/animalsgame/chat-bot/archive/refs/heads/main.zip
