@@ -3,6 +3,7 @@ const {Bot, log} = require('./bot');
 const bots = [];
 const isTestLocal = (process.argv.length > 2 && process.argv[2] == 'testlocal') ? true : false;
 const fileToken = (isTestLocal) ? 'token_testlocal.txt' : 'token.txt';
+const modulesPath = __dirname+'/modules';
 
 var mainFile = 'app.js'; // главный файл
 var autoReconnect = false; // переподключение после потери соединения, если нужно включить измените false на true
@@ -113,3 +114,16 @@ log('\x1b[1;32m', 'файл "'+filename+'" обновлён', '\x1b[0m');
 bots.forEach(o=>reloadBot(o.bot));
 }
 });
+
+if(fs.existsSync(modulesPath)){
+watchFolder(modulesPath, (eventType, filename)=>{
+if(eventType == 'change'){
+log('\x1b[1;32m', 'файл модуля "'+filename+'" обновлён', '\x1b[0m');
+
+var path = require.resolve(modulesPath+'/'+filename);
+if(path && path in require.cache)delete require.cache[path];
+
+bots.forEach(o=>reloadBot(o.bot));
+}
+});
+}
