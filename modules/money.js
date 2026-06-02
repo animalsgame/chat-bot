@@ -97,12 +97,24 @@ return {msg:'Топ '+maxUsers+':\n'+arr.join('\n'), color:['#FFFFFF']};
 
 this.cmd('магазин', (user, words)=>{
 if(words.length == 0){
-var arr = this.shopItems.map(item => 'ID '+item.id+': "'+item.name+'" Цена '+item.price);
+var items = [];
+var arr = [];
+var appid = (this.bot && this.bot.botInfo) ? this.bot.botInfo.app : 0;
+for(var i = 0; i < this.shopItems.length; i++){
+var item = this.shopItems[i];
+if(appid == 1){ // если побег собачек, значит с кнопкой купить
+arr.push('ID '+item.id+': "'+item.name+'" Цена '+item.price+' {buy'+item.id+'}');
+}else{ // иначе без кнопки
+arr.push('ID '+item.id+': "'+item.name+'" Цена '+item.price+'');	
+}
+items.push({id:'buy'+item.id, title:'купить', cmd:this.name+' магазин купить '+item.id, muted:true, color:'#FFFF00'});
+}
+//var arr = this.shopItems.map(item => 'ID '+item.id+': "'+item.name+'" Цена '+item.price);
 if(arr.length == 0)return {msg:'Ещё нет товаров', color:defColor};
 var iconStr = this.props.icon || '';
 var msg = 'Товары за '+this.name+iconStr+'\n'+arr.join('\n')+'\n';
 msg += 'Для покупки "'+this.name+' магазин купить ID"';
-return {msg:msg, color:defColor};
+return {items:items, msg:msg, color:defColor};
 }
 
 if(words.length > 0){
@@ -263,7 +275,17 @@ if(words.length == 0){
 var iconStr = this.props.icon || '';
 //var cmds = ['баланс', 'фарм', 'топ'].map(v=>this.name+' '+v);
 var cmds = Object.keys(this.cmdsObj);//.map(v=>this.name+' '+v);
-return {msg:'Валюта "'+this.name+'"'+iconStr+'. Доступные команды: '+this.name+' '+cmds.join(' | '), color:defColor};
+var items = [];
+if(appid == 1){ // проверка если проект побег собачек, чтобы не поломать текст в белках, так как там ещё нет кнопок
+for(var i = 0; i < cmds.length; i++){
+var cmdName = cmds[i];
+var buttonName = 'button'+(i+1);
+var cmd = this.name+' '+cmdName; // название валюты (пробел) и сама команда
+cmds[i] = '{'+buttonName+'}';
+items.push({id:buttonName, title:cmdName, cmd:cmd, muted:true, color:'#FFFF00'});
+}
+}
+return {items:items, msg:'Валюта "'+this.name+'"'+iconStr+'. Доступные команды: '+this.name+' '+cmds.join(' | '), color:defColor};
 }
 
 if(!this.storage){
