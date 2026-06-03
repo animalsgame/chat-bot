@@ -1,0 +1,76 @@
+Вот интерфейс бота на ts, по этому интерфейсу ты будешь писать код
+Бот может обрабатывать команды, отправлять сообщения, отправлять файлы, дарить подарки, ещё бот может обращаться к api
+
+type CommandCallback = (user: User, words: string[]) => void | string | MessageObject;
+type EventCallback = (user: User, msg: string) => void | boolean;
+type ApiCallback = (response: ApiResponse) => void;
+type FileCallback = (fileInfo: FileInfo, data: Buffer) => void;
+
+interface GiftItem {id: number; name: string; price: number;}
+interface User {id: number; nick: string; pol: string; opyt: number; level: number; popular: number; popularLevel: number; msgid?: string; payload?: PayloadData; botDrug: boolean;}
+interface BotInfo {id: number; app: number; owner: number; pol: string; nick: string; nickColor?: string | string[];}
+interface PayloadData {type: string; value: any;}
+interface FileInfo {name?: string; user: User;}
+interface PopupItem {text: string; title?: string; tint?: string; color?: string | string[];}
+interface MediaItem {url: string; name: string; ext?: string;}
+interface Item {id: string; cmd: string; pincmd?: string; title?: string; color?: string | string[]; muted?: boolean; payload?: any; giftid?: number; tint?: string; popup?: PopupItem; media?: MediaItem;}
+interface MessageObject {msg: string; msgid?: string; color?: string | string[]; items?: Item[];}
+interface ApiError {msg?: string; [key: string]: any;}
+interface ApiResponse {error?: ApiError; ok?: boolean; [key: string]: any;}
+interface ApiPropsV {v: string;}
+
+interface Bot {
+myBotInit: boolean;
+botInfo: BotInfo;
+cmd(name: string, cb: CommandCallback): void; // добавление команды
+event(type: string, cb: EventCallback) : void; // подписка на событие
+api(method: string, props: ApiPropsV | object, cb?: ApiCallback | null): Promise<ApiResponse> | void;
+sendMessage(userid: number | number[], msg: string, props?: MessageObject, cb?: ApiCallback | null): Promise<ApiResponse> | void;
+sendGift(userid: number, itemid: number, cb?: ApiCallback | null): Promise<ApiResponse> | void;
+sendFile(userid: number, fileInfo?: FileInfo, data: Buffer, cb?: ApiCallback | null) : Promise<ApiResponse> | void;
+}
+
+Описание свойств:
+BotInfo -> id: id бота, app: id проекта, owner: id владельца бота
+MessageObject -> msg: текст сообщения, msgid: id сообщения чтобы бот мог ответить на нужное сообщение (тогда сообщение обновляется на новое), color: цвет сообщения, всё в hex формате #FFFFFF, если в массиве больше одного цвета значит это уже градиент, items: предметы, чтобы можно было создавать кнопки, окна
+Item -> id: id должен быть уникальным у каждого предмета, может содержать [a-zA-Z0-9_], cmd: команда которая будет вызвана, pincmd: закрепляет команду чтобы можно было быстро ответить через кнопку, title: текст для кнопки, color: цвет текста, muted: чтобы команда отправилась тихо через кнопку (без показа сообщения), payload: с ним удобней обрабатывать действия, чтобы не создавать новую команду (если нужно выполнить действие через кнопку), giftid: если нужна картинка подарка, тогда это свойство должно быть обязательно
+
+Методы api:
+Эти методы bot.nickChange, bot.nickColorChange, bot.polChange, bot.textInfoChange в props принимают ApiPropsV, а v это не версия а value
+app.gifts - возвращает GiftItem[] список подарков 
+bot.friends - возвращает number[] id пользователей кто добавил бота в друзья
+
+Важные уточнения:
+Код должен работать и в nodejs 8 версии, но async await там поддерживается
+Для цвета сообщений подбирай подходящие цвета, фон #3B1F11
+Метод bot.nickColorChange принимает hex цвета через пробел
+
+Если создаёшь команду, имя не попадает в words массив, то есть например команда тест, если текст такой "тест 123" то в words будет ["123"], и команды добавляй не при первом запуске бота, а после проверки myBotInit
+В ApiResponse если есть свойство error, значит ошибка от api, и не все методы api возвращают свойство ok, но считается всё равно успехом (если нет свойства error)
+Чтобы создать кнопку (или что связано с Item) надо в текст сообщения обязательно добавить {id} где id это id предмета из объекта Item, помни об этом!
+Если создаёшь Item, не добавляй другие свойства, используй только те что в описании интерфейса, и если добавляешь payload, тогда muted не добавляй
+Если создаёшь Item с popup, media, или giftid, не добавляй свойство cmd, и строго выбирай только одно свойство, не должно быть popup и media одновременно, api выдаст ошибку!
+Не добавляй функции где первый запуск бота, всё что внутри блока не вызвать в обработчике команд, добавляй их после той проверки
+Учитывай такие ситуации, если сообщение слишком длинное (1000 символов) api может выдать ошибку, а если обращаешься к api подарков или друзей, учитывай что данных может быть много, и нужно к примеру сделать постраничную навигацию, кнопки же есть
+Свойство pol это пол, может иметь одну букву, м - мужской, ж - женский, н - неизвестно
+В свойстве color может быть максимально 5 цветов, если в массиве больше 1 цвета значит это градиент
+Если вызываешь эти методы (sendMessage, sendGift, sendFile) то проверяй свойство botDrug в объекте User, если оно false значит api выдаст ошибку, пользователь должен добавить бота в друзья прежде чем обращаться к этим методам, но если обращается владелец бота то ему разрешено без свойства botDrug
+В методе sendMessage (аргумент props) в нём можно игнорировать свойство msg, потому что оно уже передаётся в первый аргумент, а чтобы проверить что сообщение доставлено успешно, в ответе приходит свойство status, это массив с числом, если 1 - успех (сколько получателей столько и элементов)
+Если вызываешь sendFile, то cb становится FileCallback, а в аргумент fileInfo не надо передавать свойство user, для отправки оно не нужно, и если добавляешь событие file, cb должен быть тоже FileCallback
+Если вызываешь в обработчике команд методы api, оптимизируй запросы, иначе api может выдать ошибку (если много запросов в секунду) при необходимости используй таймеры для обхода, например если получаешь список подарков, лучше один раз получить список при запуске бота, чем вызывать каждый раз метод api в обработчике команд
+Если сохраняешь данные, для имени файла обязательно используй свойство app в BotInfo, это гарантия что один и тот же код не перезапишет данные другого проекта, бот может использоваться в разных проектах
+
+Про события, их всего два (используй их только при необходимости)
+message - когда приходит сообщение (команда), но выполняется при условии если команда не найдена, ещё cb может вернуть false, тогда обработка остальных команд останавливается, например полезно для ограничения доступа к командам 
+file - когда приходит файл
+
+Возьми за основу этот пример на ts, именно так должен создаваться код для бота, но код пиши только на чистом js!
+Добавь команду /start (вместе с /) это приветствие для пользователя.
+
+module.exports = async function(bot: Bot): void {
+if(!bot.myBotInit){
+bot.myBotInit = true;
+console.log('бот', bot.botInfo);
+bot.sendMessage(bot.botInfo.owner, 'Мой владелец, я в сети*em3*', { color:[ '#f1a0b3', '#FFFF00', '#54EFF7' ] });
+}
+};
